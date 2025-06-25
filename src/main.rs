@@ -60,7 +60,10 @@ fn main() {
         Some(commands) => {
             match commands {
                 Commands::Init => {
-                    println!("Initializing SecretStore...");
+                    println!("Welcome to SecretStore 🔐
+                            Your personal, secure, and simple password manager — right in your terminal.
+                            Let's get you set up! Follow the prompts to initialize your encrypted vault and start storing your secrets safely.
+                            Your privacy matters. Your secrets stay yours.");
                     create_file();
                 }
 
@@ -136,7 +139,7 @@ fn main() {
 
                     let initial_len = entries.len();
                     entries.retain(|entry| entry.platform != *platform);
-                    
+
                     if entries.len() == initial_len {
                         println!("No credentials found for platform: {platform}");
                     } else {
