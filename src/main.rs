@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::{fs, io::Write};
+use std::fs;
 
 use clap::{Parser, Subcommand};
 use dirs::home_dir;
@@ -97,9 +97,13 @@ fn main() {
 
                 Commands::List => {
                     println!("Listing stored credentials...");
+
                     let contents = fs::read_to_string(&path).unwrap();
-                    let deserialized: AddInputs = serde_json::from_str(&contents).unwrap();
-                    println!("{:?}", deserialized);
+                    let entries: Vec<AddInputs> = serde_json::from_str(&contents).unwrap();
+
+                    for entry in entries {
+                        println!("{:?}", entry);
+                    }
                 }
 
                 Commands::Get { platform } => {
