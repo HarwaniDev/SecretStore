@@ -108,12 +108,46 @@ fn main() {
 
                 Commands::Get { platform } => {
                     println!("Getting credentials for platform: {platform}");
-                    // Your get logic here
+
+                    let contents = fs::read_to_string(&path).unwrap();
+                    let entries: Vec<AddInputs> = serde_json::from_str(&contents).unwrap();
+
+                    // Search for matching platform
+                    let result = entries.iter().find(|entry| entry.platform == *platform);
+
+                    // Print result
+                    match result {
+                        Some(entry) => {
+                            println!("Platform: {}", entry.platform);
+                            println!("Username: {}", entry.username);
+                            println!("Password: {}", entry.password);
+                        }
+                        None => {
+                            println!("No credentials found for platform: {platform}");
+                        }
+                    }
                 }
 
                 Commands::Delete { platform } => {
                     println!("Deleting credentials for platform: {platform}");
-                    // Your delete logic here
+
+                    let contents = fs::read_to_string(&path).unwrap();
+                    let mut entries: Vec<AddInputs> = serde_json::from_str(&contents).unwrap();
+
+                    let initial_len = entries.len();
+                    entries.retain(|entry| entry.platform != *platform);
+                    
+                    if entries.len() == initial_len {
+                        println!("No credentials found for platform: {platform}");
+                    } else {
+                        println!("Credentials for platform '{platform}' deleted.");
+
+                        // Serialize updated Vec back to JSON
+                        let serialized = serde_json::to_string_pretty(&entries).unwrap();
+
+                        // Overwrite file with updated entries
+                        fs::write(&path, serialized).expect("Failed to write to file");
+                    }
                 }
             }
         }
