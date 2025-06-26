@@ -3,7 +3,7 @@ use std::fs;
 
 use clap::{Parser, Subcommand};
 use dirs::home_dir;
-use secretstore::create_file;
+use secretstore::{create_file, decrypt_data, encrypt_data};
 
 #[derive(Parser)]
 #[command(name = "ss")]
@@ -79,10 +79,16 @@ fn main() {
                         password: password.to_string(),
                     };
 
-                    // Read existing entries or start fresh
+                    // Read and decrypt existing entries or start fresh
                     let mut entries: Vec<AddInputs> = if path.exists() {
-                        let contents = fs::read_to_string(&path).unwrap();
-                        serde_json::from_str(&contents).unwrap_or_else(|_| Vec::new())
+                        let buffer = fs::read(&path).unwrap();
+                        if !buffer.is_empty() {
+                            let decrypted = decrypt_data("master_password", &buffer);
+                            let json = String::from_utf8(decrypted).unwrap();
+                            serde_json::from_str(&json).unwrap_or_else(|_| Vec::new())
+                        } else {
+                            Vec::new()
+                        }
                     } else {
                         Vec::new()
                     };
@@ -92,16 +98,23 @@ fn main() {
 
                     // Serialize the whole array back to JSON
                     let serialized = serde_json::to_string_pretty(&entries).unwrap();
+                    let encrypted_data = encrypt_data("master_password", serialized.as_bytes());
 
                     // Overwrite the file with updated array
-                    fs::write(&path, serialized).expect("Failed to write to file");
+                    fs::write(&path, encrypted_data).expect("Failed to write to file");
                 }
 
                 Commands::List => {
                     println!("Listing stored credentials...");
 
-                    let contents = fs::read_to_string(&path).unwrap();
-                    let entries: Vec<AddInputs> = serde_json::from_str(&contents).unwrap();
+                    let buffer = fs::read(&path).unwrap();
+                    if buffer.is_empty() {
+                        println!("No credentials stored.");
+                        return;
+                    }
+                    let decrypted_data = decrypt_data("master_password", &buffer);
+                    let json = String::from_utf8(decrypted_data).unwrap();
+                    let entries: Vec<AddInputs> = serde_json::from_str(&json).unwrap();
 
                     for entry in entries {
                         println!("{:?}", entry);
@@ -111,8 +124,14 @@ fn main() {
                 Commands::Get { platform } => {
                     println!("Getting credentials for platform: {platform}");
 
-                    let contents = fs::read_to_string(&path).unwrap();
-                    let entries: Vec<AddInputs> = serde_json::from_str(&contents).unwrap();
+                    let buffer = fs::read(&path).unwrap();
+                    if buffer.is_empty() {
+                        println!("No credentials stored.");
+                        return;
+                    }
+                    let decrypted_data = decrypt_data("master_password", &buffer);
+                    let json = String::from_utf8(decrypted_data).unwrap();
+                    let entries: Vec<AddInputs> = serde_json::from_str(&json).unwrap();
 
                     // Search for matching platform
                     let result = entries.iter().find(|entry| entry.platform == *platform);
@@ -133,8 +152,14 @@ fn main() {
                 Commands::Delete { platform } => {
                     println!("Deleting credentials for platform: {platform}");
 
-                    let contents = fs::read_to_string(&path).unwrap();
-                    let mut entries: Vec<AddInputs> = serde_json::from_str(&contents).unwrap();
+                    let buffer = fs::read(&path).unwrap();
+                    if buffer.is_empty() {
+                        println!("No credentials stored.");
+                        return;
+                    }
+                    let decrypted_data = decrypt_data("master_password", &buffer);
+                    let json = String::from_utf8(decrypted_data).unwrap();
+                    let mut entries: Vec<AddInputs> = serde_json::from_str(&json).unwrap();
 
                     let initial_len = entries.len();
                     entries.retain(|entry| entry.platform != *platform);
@@ -146,9 +171,10 @@ fn main() {
 
                         // Serialize updated Vec back to JSON
                         let serialized = serde_json::to_string_pretty(&entries).unwrap();
+                        let encrypted_data = encrypt_data("master_password", serialized.as_bytes());
 
                         // Overwrite file with updated entries
-                        fs::write(&path, serialized).expect("Failed to write to file");
+                        fs::write(&path, encrypted_data).expect("Failed to write to file");
                     }
                 }
             }

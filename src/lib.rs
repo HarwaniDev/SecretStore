@@ -7,7 +7,6 @@ use argon2::{
 use dirs::home_dir;
 use rand::{rngs::OsRng, RngCore};
 use std::fs;
-use std::fs;
 
 // handle errors
 pub fn create_file() {
@@ -30,15 +29,17 @@ fn derive_key(master_password: &str, salt: &[u8]) -> [u8; 32] {
     key
 }
 
-fn encrypt_data(master_password: &str, plaintext: &[u8]) -> Vec<u8> {
+pub fn encrypt_data(master_password: &str, plaintext: &[u8]) -> Vec<u8> {
     let mut salt = [0u8; 16];
-    OsRng.fill_bytes(&mut salt);
+    let mut rng = OsRng; // Create an OsRng instance
+
+    rng.fill_bytes(&mut salt);
 
     let key = derive_key(master_password, &salt);
-    let cipher = Aes256Gcm::new(Key::from_slice(&key));
+    let cipher = Aes256Gcm::new(Key::<Aes256Gcm>::from_slice(&key));
 
     let mut nonce = [0u8; 12];
-    OsRng.fill_bytes(&mut nonce);
+    rng.fill_bytes(&mut nonce);
 
     let ciphertext = cipher
         .encrypt(Nonce::from_slice(&nonce), plaintext)
@@ -48,14 +49,13 @@ fn encrypt_data(master_password: &str, plaintext: &[u8]) -> Vec<u8> {
     [salt.to_vec(), nonce.to_vec(), ciphertext].concat()
 }
 
-fn decrypt_data(master_password: &str, data: &[u8]) -> Vec<u8> {
+pub fn decrypt_data(master_password: &str, data: &[u8]) -> Vec<u8> {
     let salt = &data[..16];
     let nonce = &data[16..28];
     let ciphertext = &data[28..];
 
     let key = derive_key(master_password, salt);
-    let cipher = Aes256Gcm::new(Key::from_slice(&key));
-
+    let cipher = Aes256Gcm::new(Key::<Aes256Gcm>::from_slice(&key));
     cipher
         .decrypt(Nonce::from_slice(nonce), ciphertext)
         .unwrap()
