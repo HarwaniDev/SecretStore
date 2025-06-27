@@ -1,23 +1,38 @@
 use aes_gcm::aead::{Aead, KeyInit};
 use aes_gcm::{Aes256Gcm, Key, Nonce}; // AES-GCM 256-bit
-use argon2::{
-    password_hash::{PasswordHash, SaltString},
-    Argon2, PasswordHasher,
-};
+use argon2::Argon2;
 use dirs::home_dir;
 use rand::{rngs::OsRng, RngCore};
 use std::fs;
+use std::io::Error;
+use std::path::PathBuf;
 
 // handle errors
-pub fn create_file() {
-    let mut path = home_dir().expect("Could not determine home directory");
-    path.push(".secretstore");
-    path.push("vault.txt");
-    let _ = fs::OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(&path)
-        .expect("Could not create the file");
+pub fn create_file() -> Result<PathBuf, Error> {
+    let mut path: PathBuf = PathBuf::new();
+    let pathbuffer = home_dir();
+    match pathbuffer {
+        Some(_) => {
+            path.push(".secretstore");
+            path.push("vault.txt");
+        }
+        None => {
+            eprintln!("Could not determine home directory");
+            return Err(Error::new(
+                std::io::ErrorKind::NotFound,
+                "Home directory not found",
+            ));
+        }
+    }
+
+    let file = fs::OpenOptions::new().create(true).append(true).open(&path);
+    match file {
+        Ok(_) => Ok(path),
+        Err(e) => {
+            eprintln!("Could not create the file");
+            Err(e)
+        }
+    }
 }
 
 fn derive_key(master_password: &str, salt: &[u8]) -> [u8; 32] {
