@@ -21,23 +21,32 @@ struct Cli {
 #[derive(Subcommand)]
 enum Commands {
     // initialise secretstore
+    #[command(about = "Initialize your SecretStore vault")]
     Init,
 
     // add details for a platform
+    #[command(about = "Add a new credential")]
     Add {
+        
+        #[arg(help = "Platform or website name")]
         platform: String,
+
+        #[arg(help = "Username for the platform")]
         username: String,
-        password: String,
     },
+
     // list all the platforms
+    #[command(about = "List all stored credentials")]
     List,
 
     // get a specfic platform details
+    #[command(about = "Get credentials of a stored platform")]
     Get {
         platform: String,
     },
 
     // delete a specific platform details
+    #[command(about = "Delete credentials of a stored platform")]
     Delete {
         platform: String,
     },
@@ -55,7 +64,7 @@ fn main() {
     let mut path = home_dir().expect("Could not determine home directory");
     path.push(".secretstore");
     path.push("vault.txt");
-    
+
     match &cli.command {
         Some(commands) => match commands {
             Commands::Init => {
@@ -96,17 +105,12 @@ fn main() {
                 }
             }
 
-            Commands::Add {
-                platform,
-                username,
-                password,
-            } => {
+            Commands::Add { platform, username } => {
                 println!("Adding credentials for platform: {platform}");
-                let entry = AddInputs {
-                    platform: platform.to_string(),
-                    username: username.to_string(),
-                    password: password.to_string(),
-                };
+                // let entry = AddInputs {
+                //     platform: platform.to_string(),
+                //     username: username.to_string(),
+                // };
                 let buffer = if path.exists() {
                     match fs::read(&path) {
                         Ok(buf) => buf,
@@ -119,8 +123,16 @@ fn main() {
                     Vec::new()
                 };
 
-                let (master_password, mut entries) = if !buffer.is_empty() {
+                let (master_password, mut entries, platform_pasword) = if !buffer.is_empty() {
                     loop {
+                        let platform_password =
+                            match rpassword::prompt_password("Enter password for the platform") {
+                                Ok(p) => p,
+                                Err(e) => {
+                                    eprintln!("Error reading password: {e}");
+                                    continue;
+                                }
+                            };
                         let master_password = match prompt_password("Enter your master password: ")
                         {
                             Ok(p) => p,
@@ -141,19 +153,33 @@ fn main() {
                         let json = String::from_utf8(decrypted).unwrap_or_else(|_| String::new());
                         let entries: Vec<AddInputs> =
                             serde_json::from_str(&json).unwrap_or_else(|_| Vec::new());
-                        break (master_password, entries);
+                        break (master_password, entries, platform_password);
                     }
                 } else {
-                    let master_password =
-                        match prompt_password("Set your master password for this new vault: ") {
+                    let platform_password =
+                        match rpassword::prompt_password("Enter password for the platform") {
                             Ok(p) => p,
                             Err(e) => {
                                 eprintln!("Error reading password: {e}");
                                 return;
                             }
                         };
-                    (master_password, Vec::new())
+                    let master_password = match prompt_password("Enter your master password: ") {
+                        Ok(p) => p,
+                        Err(e) => {
+                            eprintln!("Error reading password: {e}");
+                            return;
+                        }
+                    };
+                    (master_password, Vec::new(), platform_password)
                 };
+
+                let entry = AddInputs {
+                    platform: platform.to_string(),
+                    username: username.to_string(),
+                    password: platform_pasword,
+                };
+
                 entries.push(entry);
                 let serialized = serde_json::to_string_pretty(&entries).unwrap();
                 let encrypted_data = encrypt_data(&master_password, serialized.as_bytes());

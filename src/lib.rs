@@ -12,7 +12,8 @@ pub fn create_file() -> Result<PathBuf, Error> {
     let mut path: PathBuf = PathBuf::new();
     let pathbuffer = home_dir();
     match pathbuffer {
-        Some(_) => {
+        Some(p) => {
+            path.push(p);
             path.push(".secretstore");
             path.push("vault.txt");
         }
@@ -24,7 +25,16 @@ pub fn create_file() -> Result<PathBuf, Error> {
             ));
         }
     }
-
+    println!("{:?}", path);
+    
+    // Create the .secretstore directory if it doesn't exist
+    if let Some(parent) = path.parent() {
+        if let Err(e) = fs::create_dir_all(parent) {
+            eprintln!("Could not create directory: {}", e);
+            return Err(e);
+        }
+    }
+    
     let file = fs::OpenOptions::new().create(true).append(true).open(&path);
     match file {
         Ok(_) => Ok(path),
