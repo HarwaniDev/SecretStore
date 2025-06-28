@@ -126,7 +126,7 @@ fn main() {
                 let (master_password, mut entries, platform_pasword) = if !buffer.is_empty() {
                     loop {
                         let platform_password =
-                            match rpassword::prompt_password("Enter password for the platform") {
+                            match rpassword::prompt_password("Enter password for the platform: ") {
                                 Ok(p) => p,
                                 Err(e) => {
                                     eprintln!("Error reading password: {e}");
@@ -157,7 +157,7 @@ fn main() {
                     }
                 } else {
                     let platform_password =
-                        match rpassword::prompt_password("Enter password for the platform") {
+                        match rpassword::prompt_password("Enter password for the platform: ") {
                             Ok(p) => p,
                             Err(e) => {
                                 eprintln!("Error reading password: {e}");

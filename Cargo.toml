@@ -3,6 +3,10 @@ name = "secretstore"
 version = "0.1.0"
 edition = "2021"
 
+[[bin]]
+name = "ss"  # This is the command users will run
+path = "src/main.rs"
+
 [dependencies]
 aes-gcm = "0.10"
 argon2 = "0.5"
