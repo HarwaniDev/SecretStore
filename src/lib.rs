@@ -25,7 +25,6 @@ pub fn create_file() -> Result<PathBuf, Error> {
             ));
         }
     }
-    println!("{:?}", path);
     
     // Create the .secretstore directory if it doesn't exist
     if let Some(parent) = path.parent() {
